@@ -1,6 +1,5 @@
-use axum::response::IntoResponse;
+use axum::response::{Html, IntoResponse};
 use axum::{extract::State, routing::get, Json, Router, Server};
-use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use sysinfo::{CpuExt, System, SystemExt};
 
@@ -23,8 +22,12 @@ struct AppState {
     sys: Arc<Mutex<System>>,
 }
 
-async fn root() -> &'static str {
-    "Hello!"
+#[axum::debug_handler]
+async fn root() -> impl IntoResponse {
+    // Development solution, not for production
+    let html = tokio::fs::read_to_string("src/index.html").await.unwrap();
+
+    Html(html)
 }
 
 #[axum::debug_handler]
