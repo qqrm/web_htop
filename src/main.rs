@@ -7,12 +7,12 @@ use sysinfo::{CpuExt, System, SystemExt};
 async fn main() {
     let router = Router::new()
         .route("/", get(root))
-        .route("/index.js", get(index_js))
+        .route("/index.mjs", get(index_mjs))
         .route("/api/cpus", get(get_cpu_load))
         .with_state(AppState {
             sys: Arc::new(Mutex::new(System::new())),
         });
-    let server = Server::bind(&"0.0.0.0:15500".parse().unwrap()).serve(router.into_make_service());
+    let server = Server::bind(&"0.0.0.0:8081".parse().unwrap()).serve(router.into_make_service());
     let addr = server.local_addr();
     println!("Listening on {addr}");
     server.await.unwrap();
@@ -32,9 +32,9 @@ async fn root() -> impl IntoResponse {
 }
 
 #[axum::debug_handler]
-async fn index_js() -> impl IntoResponse {
+async fn index_mjs() -> impl IntoResponse {
     // Development solution, not for production
-    let js = tokio::fs::read_to_string("src/index.js").await.unwrap();
+    let js = tokio::fs::read_to_string("src/index.mjs").await.unwrap();
 
     Response::builder()
         .header("content-type", "application/javascript")
