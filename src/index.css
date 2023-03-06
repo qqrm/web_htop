@@ -52,7 +52,12 @@
 
 
 body {
-    background-color: #F6E1C3;
+    background-color: #000000;
+    color: white;
     font-family: sans-serif;
     text-align: center;
+}
+
+.title {
+    color: white;
 }
