@@ -4,10 +4,18 @@ use axum::response::{Html, IntoResponse, Response};
 use axum::{extract::State, routing::get, Json, Router, Server};
 use std::sync::{Arc, Mutex};
 use sysinfo::{CpuExt, System, SystemExt};
+use tokio::sync::broadcast;
+
+type Snapshot = Vec<f32>;
 
 #[tokio::main]
 async fn main() {
-    let app_state = AppState::default();
+    let (tx, _) = broadcast::channel::<Snapshot>(1);
+
+    let app_state = AppState {
+        tx: tx.clone(),
+        cpus: Arc::new(Mutex::new(vec![])),
+    };
 
     let router = Router::new()
         .route("/", get(root))
@@ -22,11 +30,7 @@ async fn main() {
         loop {
             sys.refresh_cpu();
             let v: Vec<_> = sys.cpus().iter().map(|cpu| cpu.cpu_usage()).collect();
-
-            {
-                let mut cpus = app_state.cpus.lock().unwrap();
-                *cpus = v;
-            }
+            let _ = tx.send(v);
 
             std::thread::sleep(System::MINIMUM_CPU_UPDATE_INTERVAL);
         }
@@ -38,9 +42,10 @@ async fn main() {
     server.await.unwrap();
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 struct AppState {
     cpus: Arc<Mutex<Vec<f32>>>,
+    tx: broadcast::Sender<Snapshot>,
 }
 
 #[axum::debug_handler]
@@ -81,8 +86,10 @@ async fn rt_get_cpu_load(ws: WebSocketUpgrade, State(state): State<AppState>) ->
 }
 
 async fn rt_get_cpus_stream(app_state: AppState, mut ws: WebSocket) {
-    loop {
-        let payload = serde_json::to_string(&*app_state.cpus.lock().unwrap()).unwrap();
+    let mut rx = app_state.tx.subscribe();
+
+    while let Ok(msg) = rx.recv().await {
+        let payload = serde_json::to_string(&msg).unwrap();
         ws.send(Message::Text(payload)).await.unwrap();
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
