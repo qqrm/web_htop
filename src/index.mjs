@@ -17,18 +17,28 @@ function App(props) {
     </div>`;
 }
 
-let i = 0;
 
-let update = async () => {
-    let response = await fetch("/api/cpus");
+// let update = async () => {
+//     let response = await fetch("/api/cpus");
 
-    if (response.status !== 200) {
-        throw new Error(`Something went wrong!" + ${response.status}`);
-    }
+//     if (response.status !== 200) {
+//         throw new Error(`Something went wrong!" + ${response.status}`);
+//     }
 
-    let json = await response.json();
+//     let json = await response.json();
 
-    render(html`<${App} cpus=${json}  </${App}>`, document.body);
+//     render(html`<${App} cpus=${json} </${App}>`, document.body);
 
-}
-setInterval(update, 200)
+// }
+// setInterval(update, 200)
+
+let url = new URL("/rt/cpus", window.location.href);
+// http => ws
+// https => wss
+url.protocol = url.protocol.replace("http", "ws");
+
+let ws = new WebSocket(url.href);
+ws.onmessage = (ev) => {
+    let json = JSON.parse(ev.data);
+    render(html`<${App} cpus=${json}></${App}>`, document.body);
+};
